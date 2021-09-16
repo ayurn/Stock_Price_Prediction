@@ -8,6 +8,9 @@ This project focuses on predicting Google stock price on real time data. I used 
 ![Python 3.6](https://img.shields.io/badge/python-3.6.9-orange) ![pip-3](https://img.shields.io/badge/pip-20.0.2-green) ![Python-Kafka 2.0.2](https://img.shields.io/badge/kafka--python-2.0.2-red) ![Pyspark 3.1.2](https://img.shields.io/badge/pyspark-3.1.2-yellowgreen) ![s3fs 0.4.2](https://img.shields.io/badge/s3fs-0.4.2-blue) ![pandas 1.3.3](https://img.shields.io/badge/pandas-1.3.3-green)
 ![alpha-vantage 2.3.1](https://img.shields.io/badge/alpha--vantage-2.3.1-critical) ![boto3 1.18.42](https://img.shields.io/badge/boto3-1.18.42-ff69b4) ![Flask 2.0.1](https://img.shields.io/badge/Flask-2.0.1-009e73)
 
+### Architecture for Stock price prediction project
+![GIF](readme_resources/architecture.png)
+
 ![GIF](readme_resources/readme_resources_stock_prediction_chart.gif)
 
 #
@@ -93,6 +96,117 @@ Using ALPHA VANTAGE API to predict google stock price.
 
     ```
 
+    ### Preprocessing the data to clean it and Creating ML model
+* 1.Create a notebook and load create a spark session
+* from pyspark.sql import SparkSession
+* spark= SparkSession.builder.appName('Stock processing').getOrCreate()
+
+### 2.Load the data we fetched in spark dataframe
+* dataset=spark.read.csv("google_stock_data")
+
+### 3.Check the dataframe columns
+* dataset.columns
+
+### 4. Clean the column as they are not in expected format for analysis
+* dataset2=dataset.withColumnRenamed('["time"','time')\
+* .withColumnRenamed(' "open"','open')\
+* .withColumnRenamed(' "high"','high')\
+* .withColumnRenamed(' "low"','low')\
+* .withColumnRenamed(' "close"','close')\
+* .withColumnRenamed(' "volume"]','volume')
+
+
+
+### 5. Check the final cleaned data
+
+|       time        |   open  |  high   |  low    | close   |volume |
+|-------------------|---------|---------|---------|---------|-------|
+|2021-09-03 19:00:00| 139.55  | 139.55  | 139.55  | 139.55  | 2749  |
+|2021-09-03 17:45:00| 139.65  | 139.65  | 139.65  | 139.65  | 150   |
+|2021-09-03 16:15:00| 139.58  | 139.61  | 139.55  | 139.55  | 31003 |
+|2021-09-03 16:00:00| 139.765 | 139.885 | 139.54  | 139.62  | 269779|
+|2021-09-03 15:45:00| 139.69  | 139.769 | 139.635 | 139.769 | 79292 |
+|2021-09-03 15:30:00| 139.8399| 139.86  | 139.655 | 139.69  | 49114 |
+|2021-09-03 15:15:00| 139.76  | 139.88  | 139.75  | 139.83  | 50153 |
+|2021-09-03 15:00:00| 139.78  | 139.84  | 139.72  | 139.74  | 38715 |
+|2021-09-03 14:45:00| 139.61  | 139.78  | 139.59  | 139.78  | 31959 |
+|2021-09-03 14:30:00| 139.6829| 139.6861| 139.57  | 139.6311| 31552 |
+|2021-09-03 14:15:00| 139.63  | 139.72  | 139.57  | 139.69  | 34371 |
+|2021-09-03 14:00:00| 139.76  | 139.76  | 139.63  | 139.64  | 36656 |
+|2021-09-03 13:45:00| 139.69  | 139.78  | 139.65  | 139.76  | 28612 |
+|2021-09-03 13:30:00| 139.65  | 139.73  | 139.629 | 139.67  | 30235 |
+|2021-09-03 13:15:00| 139.49  | 139.65  | 139.48  | 139.64  | 35199 |
+|2021-09-03 13:00:00| 139.46  | 139.515 | 139.4104| 139.47  | 32583 |
+|2021-09-03 12:45:00| 139.45  | 139.47  | 139.35  | 139.46  | 34212 |
+|2021-09-03 12:30:00| 139.47  | 139.5   | 139.33  | 139.43  | 34336 |
+|2021-09-03 12:15:00| 139.4451| 139.54  | 139.39  | 139.52  | 35873 |
+|2021-09-03 12:00:00| 139.5201| 139.56  | 139.43  | 139.48  | 32806 |
+
+
+### 6.Convert data types of columns to desired format
+* df2 = newDf.withColumn("open",col("open").cast("double"))\
+* .withColumn("high",col("high").cast("double"))\
+* .withColumn("low",col("low").cast("double"))\
+* .withColumn("close",col("close").cast("double"))\
+* .withColumn("volume",col("volume").cast("int"))
+
+### 7. Check for null values by converting spark df to pandas df
+* pandaDf=newDf.toPandas()
+* pandaDf.isna().sum()
+
+
+## CREATING A ML MODEL
+* Import necessary things
+* from pyspark.ml.linalg import Vectors
+* from pyspark.ml.feature import VectorAssembler
+* from pyspark.ml.regression import LinearRegression
+
+### 2. Create features columns with vector assembler
+* featureassembler=VectorAssembler(inputCols=["open","high","low"],outputCol="Features")
+
+### 3. Trasform the data set accordingly
+* output=featureassembler.transform(df2)
+
+### 4. Sort data in ascending order
+* finalized_data=output.select("time","Features","close").sort("time",ascending=True)
+
+### 5. Split data into test and train data with window function
+* final_data=finalized_data.withColumn("rank",percent_rank().over(Window.partitionBy().orderBy("time")))
+* train_data = final_data.where("rank <= .8").drop("rank")
+* test_data = final_data.where("rank > .8").drop("rank")
+
+### 6. Write test data to parquet file for further use
+* test_df.write.parquet('test_data')
+
+### 7. Create model with linear regression algoritham
+* regressor=LinearRegression(featuresCol='Features', labelCol='close')
+* lr_model=regressor.fit(train_data)
+
+### 8.Check for coefficient and intercepts
+* lr_model.coefficients
+* lr_model.intercept
+
+### 9. Make prediction by transforming data in model
+* pred= lr_model.transform(test_data)
+* pred.select("Features","close","prediction").show()
+* Output:
+
+| Features           |close | prediction       |
+|--------------------| -----|------------------|
+|[139.045,139.085,...|138.98| 139.0088189816052|
+|[138.97,138.98,13...|138.97|138.98604284027746|
+|[139.21,139.21,13...|139.21| 139.218743620076 |
+|[138.81,138.81,13...|138.81|138.81953685610827|
+|[138.81,139.05,13...|139.05|138.98329554207902|
+|[139.4355,139.435...| 138.9|139.03487193320166|
+|[139.25,139.25,13...|139.25|139.25866429647274|
+|[138.97,138.97,13...|138.97|138.97921956169534|
+|[139.43,139.59,13...|139.59|139.53984348571282|
+
+### 10. Save model to HDFS
+
+* lr_model.save(“Stock_Model”)
+
 - **Create a Topic in Kafka**
 
     Create a topic in kafka using below query. Before create kafka topic you go to kafka folder.
@@ -154,16 +268,16 @@ Using ALPHA VANTAGE API to predict google stock price.
 
 # Deploying stock prediction model on EC2 instance
 
-## Create EC2 t2.small instance
-## Now add another security group to EC2 instance and give all traffic permission to inbound rule.
-## Now connect to EC2 instance using FileZilla and Upload all the project files and kafka to ec2 instance.
-## From terminal connect to EC2 instance using ssh command
+### Create EC2 t2.small instance
+### Now add another security group to EC2 instance and give all traffic permission to inbound rule.
+### Connect to EC2 instance using FileZilla and Upload all the project files and kafka to ec2 instance.
+### From terminal connect to EC2 instance using ssh command
 
 ```
 ssh -i stockKey.pem ubuntu@ec2-3-108-249-9.ap-south-1.compute.amazonaws.com
 ```
 #
-## Now update apt and python3-pip using this command
+### Update apt and python3-pip using this command
 ```
 sudo apt-get update && sudo apt-get install python3-pip
 ```
@@ -171,7 +285,7 @@ sudo apt-get update && sudo apt-get install python3-pip
 ```
 pip3 install -r requirements.txt
 ```
-## Now install java jvm 8 in ec2 instance
+## Install java jvm 8 in ec2 instance
 ```
 sudo apt install openjdk-8-jre-headless
 ```
@@ -185,3 +299,7 @@ sudo apt install openjdk-8-jre-headless
 ```
 - Run producer file. (``` python3 producer.py ```)
 - Run app file. (``` python3 app.py ```)
+
+
+
+
