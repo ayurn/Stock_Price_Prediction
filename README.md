@@ -149,5 +149,5 @@ Using ALPHA VANTAGE API to predict google stock price.
 ## How To Run
 
 - First start zookeeper and kafka server.
-- Run producer file. (``` python3 consumer.py ```)
+- Run producer file. (``` python3 producer.py ```)
 - Run app file. (``` python3 app.py ```)
