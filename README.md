@@ -1,6 +1,6 @@
 # Stock Price Prediction Project
 
-This project focuses on predicting Google stock price on real time data. I used past 10 years worth of historical Google (GOOGL) stock data for training and built an effective model for predicting stock prices and displayed the predictions on webpage using Flask, Kafka and Highcharts.
+This project focuses on predicting Google stock price on real time data. I used Google (GOOGL) stock data for training and built an effective model for predicting stock prices and displayed the predictions on webpage using Flask, Kafka and Highcharts.
 
 ![GitHub issues](https://img.shields.io/github/issues/ayurn/Stock_Price_Prediction?color=FF3D37&label=Issues&style=plastic)
 ![GitHub last commit](https://img.shields.io/github/last-commit/ayurn/Stock_Price_Prediction?color=5DFF00&label=Last%20Commit&style=plastic)
@@ -143,11 +143,45 @@ Using ALPHA VANTAGE API to predict google stock price.
 
     In flask I have created 2 URL:
 
-    1. "/" for main page which rander stockgraph.html template for showing predicting close and actual close value.
+    1. "/" for main page which rander index.html template for showing predicting close and actual close value.
     2. "/data" this is for send data to index.html page for showing graph.
 
 ## How To Run
 
 - First start zookeeper and kafka server.
+- Run producer file. (``` python3 producer.py ```)
+- Run app file. (``` python3 app.py ```)
+
+# Deploying stock prediction model on EC2 instance
+
+## Create EC2 t2.small instance
+## Now add another security group to EC2 instance and give all traffic permission to inbound rule.
+## Now connect to EC2 instance using FileZilla and Upload all the project files and kafka to ec2 instance.
+## From terminal connect to EC2 instance using ssh command
+
+```
+ssh -i stockKey.pem ubuntu@ec2-3-108-249-9.ap-south-1.compute.amazonaws.com
+```
+#
+## Now update apt and python3-pip using this command
+```
+sudo apt-get update && sudo apt-get install python3-pip
+```
+## Install all the requirements using requirements.txt
+```
+pip3 install -r requirements.txt
+```
+## Now install java jvm 8 in ec2 instance
+```
+sudo apt install openjdk-8-jre-headless
+```
+## Run kafka as usual and then run app.py in ec2 instance
+```
+./bin/zookeeper-server-start.sh config/zookeeper.properties
+
+./bin/kafka-server-start.sh config/server.properties
+
+./bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic stockml
+```
 - Run producer file. (``` python3 producer.py ```)
 - Run app file. (``` python3 app.py ```)
